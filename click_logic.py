@@ -17,12 +17,14 @@ class ClickTracker:
         self.listener = None
         self.is_listening = False
         self.is_paused = False
+        self.last_region = None  # Store the most recently used region
 
     # --- Persistence ---
     def save_settings(self, path='click_counter_settings.json'):
+        """Save regions and app settings (not session data)."""
         settings = {
-            'count': self.count,
             'regions': self.regions,
+            'last_region': self.last_region,
             'browser_detection': self.browser_detection,
             'timestamp': datetime.now().isoformat()
         }
@@ -30,22 +32,82 @@ class ClickTracker:
             json.dump(settings, f, indent=2)
 
     def load_settings(self, path='click_counter_settings.json'):
+        """Load regions and app settings."""
         if os.path.exists(path):
             with open(path, 'r') as f:
                 settings = json.load(f)
-            self.count = settings.get('count', 0)
             self.regions = settings.get('regions', [])
+            self.last_region = settings.get('last_region', None)
             self.browser_detection = settings.get('browser_detection', True)
+            
+            # If we have a last_region but no regions, restore the last region
+            if self.last_region and not self.regions:
+                self.regions = [self.last_region]
+            
             return True
         return False
+
+    def save_session(self, session_duration_seconds, path='last_session.json'):
+        """Save current session data automatically."""
+        if self.count == 0 and session_duration_seconds == 0:
+            return  # Don't save empty sessions
+        
+        # Calculate IPH
+        hours = session_duration_seconds / 3600.0 if session_duration_seconds > 0 else 0
+        iph = self.count / hours if hours > 0 else 0.0
+        
+        session_data = {
+            'clicks': self.count,
+            'duration_seconds': session_duration_seconds,
+            'duration_formatted': self._format_duration(session_duration_seconds),
+            'iph': round(iph, 1),
+            'completed_at': datetime.now().isoformat(),
+            'regions_used': len(self.regions)
+        }
+        
+        with open(path, 'w') as f:
+            json.dump(session_data, f, indent=2)
+
+    def load_last_session(self, path='last_session.json'):
+        """Load the last completed session data."""
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                return json.load(f)
+        return None
+
+    def _format_duration(self, seconds):
+        """Format duration as HH:MM:SS."""
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        secs = seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
     # --- Region management ---
     def add_region(self, region):
         if region:
             self.regions.append(region)
+            self.last_region = region  # Update last used region
 
     def clear_regions(self):
         self.regions.clear()
+
+    def reset_session(self):
+        """Reset current session data (for new session)."""
+        self.count = 0
+        self.click_times = []
+        self.start_time = None
+
+    def get_region_status(self):
+        """Get a user-friendly status of current regions."""
+        if not self.regions:
+            return "No regions set"
+        elif len(self.regions) == 1:
+            region = self.regions[0]
+            width = region['x2'] - region['x1']
+            height = region['y2'] - region['y1']
+            return f"Region: {width}×{height} at ({region['x1']},{region['y1']})"
+        else:
+            return f"{len(self.regions)} regions set"
 
     # --- Counting logic ---
     def _is_browser_window(self, x, y):

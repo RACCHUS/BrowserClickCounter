@@ -8,9 +8,12 @@ A modern, always-on-top desktop app for Windows that counts mouse clicks within 
 - **Dual View Modes**: Compact and expanded interfaces
 - **Real-time Statistics**: Click rate per hour and session duration
 - **Region Management**: Draw, edit, and manage multiple click regions
-- **Persistent Settings**: Save/load configurations
+- **Region Persistence**: Automatically saves and loads last used region
+- **Smart Start Button**: Ready to start immediately with saved region
+- **Persistent Settings**: Save/load configurations automatically
 - **Always-on-top**: Stays visible while you work
 - **Draggable Interface**: Easy window positioning
+- **5-Minute Timer**: Built-in countdown timer with sound alerts
 
 ## 🎨 Modern UI Highlights
 - **Catppuccin Color Palette**: Professional dark theme with excellent contrast
@@ -34,11 +37,13 @@ pip install -r requirements.txt
 
 ## 🚀 Usage
 1. **Launch**: `python main.py` or `python BrowserClickCounter.py`
-2. **Define Regions**: Click "Draw" and select areas on screen
-3. **Start Tracking**: Click "Start" to begin counting
-4. **Monitor Stats**: View real-time click rates and session time
-5. **Manage Regions**: Add, remove, or clear regions as needed
-6. **Save Progress**: Use Save/Load to persist your settings
+2. **Auto-Load**: App automatically loads your last used region (if any)
+3. **Quick Start**: If region is already set, just click "Start" to begin
+4. **Define New Regions**: Click "Draw" to create additional areas
+5. **Monitor Stats**: View real-time click rates and session time
+6. **Use Timer**: Set countdown timers with sound alerts
+7. **Manage Regions**: Add, remove, or clear regions as needed
+8. **Auto-Save**: Settings save automatically when regions change
 
 ## 🎛️ Controls
 - **⚙ Expand Button**: Switch between compact/expanded views (compact mode)
@@ -54,15 +59,17 @@ pip install -r requirements.txt
 ## 📱 Interface Modes
 ### Compact Mode (Default)
 - **Clean, minimal interface** showing just the click count
-- **"More Options" button** clearly labeled for expansion
-- **▼ indicator** in title bar for quick access
-- **Keyboard shortcut** (Ctrl+E) for power users
+- **Region status display** shows current region info
+- **Smart button states**: Start enabled when region ready, Draw highlighted when needed
+- **Quick access controls**: Start and Draw buttons for immediate use
+- **Timer integration**: 5-minute countdown timer with controls
 - **Perfect for monitoring** while working
 
 ### Expanded Mode
 - **Full control panel** with all features
 - **Real-time statistics** and session tracking
 - **Region management** tools
+- **Timer configuration** options
 - **Settings persistence** options
 - **Complete configuration** access
 
