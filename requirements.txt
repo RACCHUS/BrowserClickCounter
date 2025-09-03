@@ -1,0 +1,14 @@
+# Click Counter App Requirements
+# Install with: pip install -r requirements.txt
+
+# Mouse and keyboard monitoring
+pynput>=1.7.6
+
+# System process monitoring for browser detection
+psutil>=5.9.0
+
+# Windows API access for window detection
+pywin32>=306
+
+# GUI framework (usually comes with Python)
+# tkinter is built into Python, no separate install needed
