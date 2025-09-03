@@ -1,0 +1,35 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+.pyenv/
+.venv/
+venv/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+Output/
+*.spec
+BrowserClickCounter_Installer.zip
+BrowserClickCounter_Installer.exe
+
+# Installer scripts output
+*.iss~
+
+# VS Code settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python egg info
+*.egg-info/
