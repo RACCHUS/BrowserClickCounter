@@ -3,8 +3,7 @@ from tkinter import messagebox
 from datetime import datetime, timedelta
 from click_logic import ClickTracker
 from timer import SessionTimer
-
-
+    
 class ClickCounterGUI:
     """GUI wrapper that uses ClickTracker for core logic."""
 
@@ -62,8 +61,11 @@ class ClickCounterGUI:
         self.title_bar.pack(fill=tk.X, side=tk.TOP)
         self.title_label = tk.Label(self.title_bar, text="Click Counter", fg=self.colors['text_primary'], bg=self.colors['bg_accent'])
         self.title_label.pack(side=tk.LEFT, padx=8)
+        # Make window draggable by both the title bar and the title label
         self.title_bar.bind("<Button-1>", self.start_drag)
         self.title_bar.bind("<B1-Motion>", self.drag_window)
+        self.title_label.bind("<Button-1>", self.start_drag)
+        self.title_label.bind("<B1-Motion>", self.drag_window)
 
         close_btn = tk.Button(self.title_bar, text='×', command=self.on_closing, bg=self.colors['bg_accent'], fg=self.colors['text_primary'], relief='flat')
         close_btn.pack(side=tk.RIGHT, padx=6)
