@@ -92,16 +92,44 @@ class ClickCounterGUI:
         self.love_label = tk.Label(self.expanded_frame, text='I love you Ash', fg=self.colors['text_secondary'], bg=self.colors['bg_primary'], font=("Segoe UI", 10, "italic"))
         self.love_label.pack(anchor='center', pady=(0, 6))
 
-        btn_frame = tk.Frame(self.expanded_frame, bg=self.colors['bg_primary'])
-        btn_frame.pack(fill=tk.X, padx=8)
-        tk.Button(btn_frame, text='Start', command=self.toggle_listening, bg=self.colors['text_success']).pack(side=tk.LEFT, padx=4)
-        tk.Button(btn_frame, text='Reset', command=self.reset_count, bg=self.colors['text_error']).pack(side=tk.LEFT, padx=4)
-        tk.Button(btn_frame, text='Draw', command=self.draw_region).pack(side=tk.LEFT, padx=4)
-        tk.Button(btn_frame, text='Manage', command=self.manage_regions).pack(side=tk.LEFT, padx=4)
-        tk.Button(btn_frame, text='Save', command=self.save_settings).pack(side=tk.LEFT, padx=4)
-        tk.Button(btn_frame, text='Load', command=self.load_settings).pack(side=tk.LEFT, padx=4)
-        # Collapse button for returning to compact view
-        tk.Button(btn_frame, text='⬇ Collapse', command=self.toggle_view).pack(side=tk.RIGHT, padx=4)
+        # Button container with improved layout
+        btn_container = tk.Frame(self.expanded_frame, bg=self.colors['bg_primary'])
+        btn_container.pack(fill=tk.X, padx=8, pady=4)
+
+        # Row 1: Session Controls
+        session_frame = tk.Frame(btn_container, bg=self.colors['bg_primary'])
+        session_frame.pack(fill=tk.X, pady=2)
+        
+        self.start_btn = tk.Button(session_frame, text='▶ Start', command=self.toggle_listening, 
+                                  bg=self.colors['text_success'], fg='white', width=10)
+        self.start_btn.pack(side=tk.LEFT, padx=2)
+        
+        self.pause_btn = tk.Button(session_frame, text='⏸ Pause', command=self.toggle_pause, 
+                                  bg='#f1c40f', fg='white', width=10, state='disabled')
+        self.pause_btn.pack(side=tk.LEFT, padx=2)
+        
+        tk.Button(session_frame, text='🔄 Reset', command=self.reset_count, 
+                 bg=self.colors['text_error'], fg='white', width=10).pack(side=tk.LEFT, padx=2)
+
+        # Row 2: Region Management and Settings
+        tools_frame = tk.Frame(btn_container, bg=self.colors['bg_primary'])
+        tools_frame.pack(fill=tk.X, pady=2)
+        
+        tk.Button(tools_frame, text='✏ Draw', command=self.draw_region, 
+                 bg=self.colors['bg_accent'], fg=self.colors['text_primary'], width=10).pack(side=tk.LEFT, padx=2)
+        tk.Button(tools_frame, text='⚙ Manage', command=self.manage_regions, 
+                 bg=self.colors['bg_accent'], fg=self.colors['text_primary'], width=10).pack(side=tk.LEFT, padx=2)
+        tk.Button(tools_frame, text='💾 Save', command=self.save_settings, 
+                 bg='#27ae60', fg='white', width=10).pack(side=tk.LEFT, padx=2)
+        tk.Button(tools_frame, text='📁 Load', command=self.load_settings, 
+                 bg='#3498db', fg='white', width=10).pack(side=tk.LEFT, padx=2)
+
+        # Row 3: View Control
+        view_frame = tk.Frame(btn_container, bg=self.colors['bg_primary'])
+        view_frame.pack(fill=tk.X, pady=(6, 2))
+        
+        tk.Button(view_frame, text='⬇ Collapse', command=self.toggle_view, 
+                 bg='#8e44ad', fg='white', width=15).pack(anchor='center')
 
         # Timer display (expanded view)
         self.timer_label = tk.Label(self.expanded_frame, text='Session: 00:00:00', fg=self.colors['text_secondary'], bg=self.colors['bg_primary'])
@@ -133,10 +161,10 @@ class ClickCounterGUI:
         try:
             cur_w = self.root.winfo_width()
             cur_h = self.root.winfo_height()
-            if cur_w < 360 or cur_h < 240:
-                self.root.geometry('360x420+30+30')
+            if cur_w < 360 or cur_h < 280:
+                self.root.geometry('360x480+30+30')
         except Exception:
-            self.root.geometry('360x420+30+30')
+            self.root.geometry('360x480+30+30')
         self.is_expanded = True
 
     def toggle_view(self):
@@ -184,20 +212,43 @@ class ClickCounterGUI:
             return
         if self.tracker.is_listening:
             self.tracker.stop_listening()
+            self.timer.stop()
             self.update_status(False)
-            # when stopping, keep the timer visible but do not reset
+            # Update button states
+            self.start_btn.config(text='▶ Start', bg=self.colors['text_success'])
+            self.pause_btn.config(state='disabled', text='⏸ Pause', bg='#f1c40f')
         else:
             self.tracker.start_listening(on_counted=self.update_count_display)
             # start session timer when tracking starts
             self.timer.start()
             self.update_status(True)
+            # Update button states
+            self.start_btn.config(text='⏹ Stop', bg=self.colors['text_error'])
+            self.pause_btn.config(state='normal')
+
+    def toggle_pause(self):
+        if not self.tracker.is_listening:
+            return
+        
+        if self.tracker.is_paused:
+            # Resume
+            self.tracker.resume_listening()
+            self.timer.resume()
+            self.pause_btn.config(text='⏸ Pause', bg='#f1c40f')
+            self.update_status(True)
+        else:
+            # Pause
+            self.tracker.pause_listening()
+            self.timer.pause()
+            self.pause_btn.config(text='▶ Resume', bg='#27ae60')
+            self.update_status(False)
 
     def update_count_display(self):
         self.count_label.config(text=str(self.tracker.count))
         self.expanded_count_label.config(text=f"Clicks: {self.tracker.count}")
 
     def update_status(self, running: bool):
-        if running:
+        if running and not self.tracker.is_paused:
             self.expanded_count_label.config(fg=self.colors['text_success'])
         else:
             self.expanded_count_label.config(fg=self.colors['text_error'])
@@ -209,7 +260,13 @@ class ClickCounterGUI:
             self.tracker.start_time = None
             # reset timer when resetting session
             self.timer.reset()
+            # Reset button states
+            self.start_btn.config(text='▶ Start', bg=self.colors['text_success'])
+            self.pause_btn.config(state='disabled', text='⏸ Pause', bg='#f1c40f')
+            # Stop listening
+            self.tracker.stop_listening()
             self.update_count_display()
+            self.update_status(False)
 
     def save_settings(self):
         try:
@@ -230,8 +287,11 @@ class ClickCounterGUI:
         if self.is_expanded:
             # update rate and session
             self.expanded_count_label.config(text=f"Clicks: {self.tracker.count}")
-            # update timer label
-            self.timer_label.config(text=f"Session: {self.timer.format_hms()}")
+            # update timer label with pause indication
+            timer_text = f"Session: {self.timer.format_hms()}"
+            if self.timer.is_paused():
+                timer_text += " (PAUSED)"
+            self.timer_label.config(text=timer_text)
             # update IPH (Images Per Hour) based on session timer and total clicks
             secs = self.timer.elapsed_seconds()
             if secs <= 0:

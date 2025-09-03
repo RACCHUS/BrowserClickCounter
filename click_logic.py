@@ -16,6 +16,7 @@ class ClickTracker:
         self.browser_detection = True
         self.listener = None
         self.is_listening = False
+        self.is_paused = False
 
     # --- Persistence ---
     def save_settings(self, path='click_counter_settings.json'):
@@ -78,6 +79,9 @@ class ClickTracker:
     def handle_click(self, x, y, button, pressed, on_counted=None):
         """Call from a mouse listener. If a click is counted, optionally call on_counted()."""
         if pressed and button == mouse.Button.left:
+            # Don't count clicks if paused
+            if self.is_paused:
+                return
             if not self._is_browser_window(x, y):
                 return
             counted = self._count_if_in_regions(x, y)
@@ -97,14 +101,26 @@ class ClickTracker:
         self.listener = mouse.Listener(on_click=listener_cb)
         self.listener.start()
         self.is_listening = True
+        self.is_paused = False  # Ensure we're not paused when starting
         if self.start_time is None:
             self.start_time = datetime.now()
+
+    def pause_listening(self):
+        """Pause click counting without stopping the listener or timer."""
+        if self.is_listening:
+            self.is_paused = True
+
+    def resume_listening(self):
+        """Resume click counting."""
+        if self.is_listening:
+            self.is_paused = False
 
     def stop_listening(self):
         if self.listener:
             self.listener.stop()
             self.listener = None
         self.is_listening = False
+        self.is_paused = False
 
     # --- Stats helpers ---
     def clicks_last_hour(self):
