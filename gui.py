@@ -113,16 +113,16 @@ class ClickCounterGUI:
 
     # UI helpers
     def show_compact(self):
+        # Hide expanded view
         self.expanded_frame.pack_forget()
+        # Only show count and expand button in compact view
+        for widget in self.compact_frame.winfo_children():
+            widget.pack_forget()
+        self.count_label.pack(pady=10)
+        self.expand_btn.pack()
         self.compact_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-        # Respect manual resizing if the user previously resized; otherwise set default
-        try:
-            cur_w = self.root.winfo_width()
-            cur_h = self.root.winfo_height()
-            if cur_w < 140 or cur_h < 140:
-                self.root.geometry('140x140+30+30')
-        except Exception:
-            self.root.geometry('140x140+30+30')
+        # Always set to minimum compact size on collapse
+        self.root.geometry('140x140+30+30')
         self.is_expanded = False
 
     def show_expanded(self):
