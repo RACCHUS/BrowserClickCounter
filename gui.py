@@ -3,6 +3,7 @@ from tkinter import messagebox
 from datetime import datetime, timedelta
 from click_logic import ClickTracker
 from timer import SessionTimer
+from celebration import CelebrationManager
     
 class ClickCounterGUI:
     """GUI wrapper that uses ClickTracker for core logic."""
@@ -10,6 +11,7 @@ class ClickCounterGUI:
     def __init__(self):
         self.tracker = ClickTracker()
         self.timer = SessionTimer()
+        self.celebration_manager = None  # Will be initialized after GUI setup
         # UI state
         self.is_expanded = False
         # Resizing state
@@ -22,6 +24,10 @@ class ClickCounterGUI:
         self.drag_start_y = 0
 
         self.setup_gui()
+        
+        # Initialize celebration manager after GUI is set up
+        self.celebration_manager = CelebrationManager(self)
+        
         loaded = self.tracker.load_settings()
         if loaded:
             messagebox.showinfo("Loaded", "Settings loaded!")
@@ -218,7 +224,7 @@ class ClickCounterGUI:
             self.start_btn.config(text='▶ Start', bg=self.colors['text_success'])
             self.pause_btn.config(state='disabled', text='⏸ Pause', bg='#f1c40f')
         else:
-            self.tracker.start_listening(on_counted=self.update_count_display)
+            self.tracker.start_listening(on_counted=self.on_click_counted)
             # start session timer when tracking starts
             self.timer.start()
             self.update_status(True)
@@ -242,6 +248,14 @@ class ClickCounterGUI:
             self.timer.pause()
             self.pause_btn.config(text='▶ Resume', bg='#27ae60')
             self.update_status(False)
+
+    def on_click_counted(self, milestone=None):
+        """Called when a click is counted, handles celebrations and display updates."""
+        self.update_count_display()
+        
+        # Trigger celebration if milestone reached
+        if milestone and self.celebration_manager:
+            self.celebration_manager.trigger_celebration(milestone, self.tracker.count)
 
     def update_count_display(self):
         self.count_label.config(text=str(self.tracker.count))
@@ -329,6 +343,9 @@ class ClickCounterGUI:
         self.resizing = False
 
     def on_closing(self):
+        # Clean up celebration animations
+        if self.celebration_manager:
+            self.celebration_manager.cleanup_all()
         self.tracker.stop_listening()
         self.root.destroy()
 

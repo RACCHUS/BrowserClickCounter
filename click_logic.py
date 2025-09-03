@@ -73,8 +73,19 @@ class ClickTracker:
                 self.click_times.append(now)
                 cutoff = now - timedelta(hours=1)
                 self.click_times = [t for t in self.click_times if t > cutoff]
-                return True
-        return False
+                
+                # Check for milestone achievements
+                milestone = self._check_milestone(self.count)
+                return True, milestone
+        return False, None
+
+    def _check_milestone(self, count):
+        """Check if the current count represents a milestone achievement."""
+        if count % 1000 == 0 and count > 0:
+            return "major"  # 1000, 2000, 3000...
+        elif count % 100 == 0 and count > 0:
+            return "minor"  # 100, 200, 300... (excluding 1000s)
+        return None
 
     def handle_click(self, x, y, button, pressed, on_counted=None):
         """Call from a mouse listener. If a click is counted, optionally call on_counted()."""
@@ -84,10 +95,10 @@ class ClickTracker:
                 return
             if not self._is_browser_window(x, y):
                 return
-            counted = self._count_if_in_regions(x, y)
+            counted, milestone = self._count_if_in_regions(x, y)
             if counted and on_counted:
                 try:
-                    on_counted()
+                    on_counted(milestone)
                 except Exception:
                     pass
 
