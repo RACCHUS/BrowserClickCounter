@@ -49,10 +49,12 @@ class RegionDrawer:
 
         # Minimum size check
         if abs(x2 - x1) < 10 or abs(y2 - y1) < 10:
+            print("DEBUG: Region too small, canceling")
             self.cancel()
             return
 
         region = {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2}
+        print(f"DEBUG: RegionDrawer created region: {region}")
         self.overlay.destroy()
         self.callback(region)
 

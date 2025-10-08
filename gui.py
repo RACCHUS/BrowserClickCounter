@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from datetime import datetime, timedelta
 from typing import Optional
 from click_logic import ClickTracker
@@ -72,14 +72,6 @@ class ClickCounterGUI:
         self.main_frame = tk.Frame(self.root, bg=self.colors['bg_primary'], bd=1, relief='solid')
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Resize grip (bottom-right)
-        self.resize_grip = tk.Frame(self.main_frame, width=12, height=12, bg=self.colors['bg_accent'], cursor='size_nw_se')
-        # Use place so it stays in bottom-right regardless of layout
-        self.resize_grip.place(relx=1.0, rely=1.0, x=-6, y=-6, anchor='se')
-        self.resize_grip.bind("<Button-1>", self.start_resize)
-        self.resize_grip.bind("<B1-Motion>", self.do_resize)
-        self.resize_grip.bind("<ButtonRelease-1>", self.stop_resize)
-
         # Title bar
         self.title_bar = tk.Frame(self.main_frame, bg=self.colors['bg_accent'], height=28)
         self.title_bar.pack(fill=tk.X, side=tk.TOP)
@@ -96,13 +88,13 @@ class ClickCounterGUI:
 
         # Compact view
         self.compact_frame = tk.Frame(self.main_frame, bg=self.colors['bg_primary'])
-        self.count_label = tk.Label(self.compact_frame, text=str(self.tracker.count), font=("Segoe UI", 24, "bold"), fg=self.colors['text_success'], bg=self.colors['bg_primary'])
+        self.count_label = tk.Label(self.compact_frame, text=str(self.tracker.count), font=("Segoe UI", 16, "bold"), fg=self.colors['text_success'], bg=self.colors['bg_primary'])
         self.count_label.pack(pady=10)
         
-        # Region status in compact view
-        self.compact_region_label = tk.Label(self.compact_frame, text="", font=("Segoe UI", 8), 
-                                           fg=self.colors['text_secondary'], bg=self.colors['bg_primary'])
-        self.compact_region_label.pack(pady=(0, 5))
+        # IPH stat in compact view
+        self.compact_iph_label = tk.Label(self.compact_frame, text="IPH: 0.0", font=("Segoe UI", 8), 
+                                        fg=self.colors['text_secondary'], bg=self.colors['bg_primary'])
+        self.compact_iph_label.pack(pady=(0, 5))
         
         # Compact control buttons
         compact_controls = tk.Frame(self.compact_frame, bg=self.colors['bg_primary'])
@@ -120,7 +112,9 @@ class ClickCounterGUI:
         self.compact_timer_placeholder = tk.Frame(self.compact_frame, bg=self.colors['bg_primary'], height=25)
         self.compact_timer_placeholder.pack(pady=5)
         
-        self.expand_btn = tk.Button(self.compact_frame, text='⚙ Expand', command=self.toggle_view)
+        self.expand_btn = tk.Button(self.compact_frame, text='⚙', command=self.toggle_view,
+                                   bg=self.colors['bg_accent'], fg=self.colors['text_primary'], 
+                                   font=("Segoe UI", 8), relief='flat', padx=4, pady=2, width=3)
         self.expand_btn.pack()
         # Allow dragging the window by the compact area (click-and-drag anywhere on compact_frame)
         self.compact_frame.bind("<Button-1>", self.start_drag)
@@ -187,6 +181,10 @@ class ClickCounterGUI:
         self.iph_label = tk.Label(self.expanded_frame, text='IPH: 0.0', fg=self.colors['text_secondary'], bg=self.colors['bg_primary'])
         self.iph_label.pack(anchor='e', padx=8, pady=(2, 8))
 
+        # Add ttk.Sizegrip in bottom-right corner only
+        self.sizegrip = ttk.Sizegrip(self.root)
+        self.sizegrip.place(relx=1.0, rely=1.0, anchor='se')
+
         self.show_compact()
 
     def _setup_timer_widgets(self):
@@ -209,17 +207,24 @@ class ClickCounterGUI:
     def show_compact(self):
         # Hide expanded view
         self.expanded_frame.pack_forget()
-        # Only show count, timer, and expand button in compact view
+        # Only show essential items in compact view (no control buttons for minimal size)
         for widget in self.compact_frame.winfo_children():
             widget.pack_forget()
-        self.count_label.pack(pady=10)
+        
+        # Pack the essential compact elements only
+        self.count_label.pack(pady=(5, 2))  # Main count display - reduced padding
+        self.compact_iph_label.pack(pady=(0, 3))  # Show IPH
+        
         # Show compact timer if it exists
         if hasattr(self, 'compact_timer_frame') and self.compact_timer_frame:
-            self.compact_timer_frame.pack(pady=5)
-        self.expand_btn.pack()
-        self.compact_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-        # Always set to minimum compact size on collapse
-        self.root.geometry('220x220+30+30')  # Larger for timer and region status
+            self.compact_timer_frame.pack(pady=2)  # Timer with its controls
+        
+        # Add expand button below timer
+        self.expand_btn.pack(pady=(3, 5))  # Expand button with small spacing
+        self.compact_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        
+        # Set to narrower compact size 
+        self.root.geometry('130x160+30+30')  # Even narrower (130) to shrink left side
         self.is_expanded = False
 
     def show_expanded(self):
@@ -258,10 +263,31 @@ class ClickCounterGUI:
     def on_region_drawn(self, region):
         self.root.deiconify()
         if region:
+            print(f"DEBUG: GUI received region: {region}")
+            
+            # If there are existing regions, ask if user wants to replace or add
+            if self.tracker.regions:
+                replace = messagebox.askyesno('Region Settings', 
+                    f'You already have {len(self.tracker.regions)} region(s) set.\n\n'
+                    'Yes = Replace existing regions with this new one\n'
+                    'No = Add this region to existing ones',
+                    default='yes')
+                if replace:
+                    self.tracker.clear_regions()
+                    print(f"DEBUG: Cleared existing regions before adding new one")
+            
             self.tracker.add_region(region)
-            self.tracker.save_settings()  # Auto-save after adding region
+            save_result = self.tracker.save_settings()  # Auto-save after adding region
+            print(f"DEBUG: Save settings result: {save_result}")
             self.update_region_display()  # Update region status display
-            messagebox.showinfo('Success', f"Added region: ({region['x1']},{region['y1']}) to ({region['x2']},{region['y2']})")
+            
+            # Show appropriate success message
+            if len(self.tracker.regions) == 1:
+                messagebox.showinfo('Success', f"Set new click region: ({region['x1']},{region['y1']}) to ({region['x2']},{region['y2']})")
+            else:
+                messagebox.showinfo('Success', f"Added region: ({region['x1']},{region['y1']}) to ({region['x2']},{region['y2']}) - Total: {len(self.tracker.regions)} regions")
+        else:
+            print("DEBUG: GUI received None region (cancelled)")
 
     def manage_regions(self):
         from region_manager import RegionManager
@@ -280,7 +306,9 @@ class ClickCounterGUI:
     def update_region_display(self):
         """Update the region status display in both compact and expanded views."""
         status = self.tracker.get_region_status()
-        self.compact_region_label.config(text=status)
+        print(f"DEBUG: Updating region display with status: {status}")
+        print(f"DEBUG: Current regions count: {len(self.tracker.regions)}")
+        # No region display in compact view anymore - just update button states
         # Update button visibility - if no regions, make draw button more prominent
         if not self.tracker.regions:
             self.compact_start_btn.config(state='disabled')
@@ -397,6 +425,15 @@ class ClickCounterGUI:
         except Exception as e:
             messagebox.showerror('Error', f'Failed to load session: {e}')
 
+    def force_reload_settings(self):
+        """Force reload settings from disk - useful for debugging region issues."""
+        result = self.tracker.force_reload_settings()
+        self.update_region_display()
+        if result:
+            messagebox.showinfo('Reload Settings', f'Settings reloaded! Found {len(self.tracker.regions)} regions.')
+        else:
+            messagebox.showwarning('Reload Settings', 'No settings file found or failed to load.')
+
     def on_closing(self):
         """Handle app closing - save session and settings."""
         # Save current session if there's activity
@@ -421,6 +458,14 @@ class ClickCounterGUI:
         self.root.destroy()
 
     def update_stats_loop(self):
+        # Calculate IPH for both views
+        secs = self.timer.elapsed_seconds()
+        if secs <= 0:
+            iph = 0.0
+        else:
+            hours = secs / 3600.0
+            iph = self.tracker.count / hours if hours > 0 else 0.0
+        
         if self.is_expanded:
             # update rate and session
             self.expanded_count_label.config(text=f"Clicks: {self.tracker.count}")
@@ -429,15 +474,13 @@ class ClickCounterGUI:
             if self.timer.is_paused():
                 timer_text += " (PAUSED)"
             self.timer_label.config(text=timer_text)
-            # update IPH (Images Per Hour) based on session timer and total clicks
-            secs = self.timer.elapsed_seconds()
-            if secs <= 0:
-                iph = 0.0
-            else:
-                hours = secs / 3600.0
-                iph = self.tracker.count / hours if hours > 0 else 0.0
             # show with one decimal place
             self.iph_label.config(text=f"IPH: {iph:.1f}")
+        else:
+            # Update compact view
+            self.count_label.config(text=str(self.tracker.count))
+            self.compact_iph_label.config(text=f"IPH: {iph:.1f}")
+        
         self.root.after(1000, self.update_stats_loop)
 
     # --- Resize handlers ---

@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 import psutil
 import win32gui
@@ -18,39 +19,100 @@ class ClickTracker:
         self.is_listening = False
         self.is_paused = False
         self.last_region = None  # Store the most recently used region
+        
+        # Get the proper directory for saving settings
+        self._settings_dir = self._get_settings_directory()
+
+    def _get_settings_directory(self):
+        """Get the appropriate directory for saving settings files."""
+        if getattr(sys, 'frozen', False):
+            # Running as PyInstaller executable
+            exe_dir = os.path.dirname(sys.executable)
+            
+            # Try to use the exe directory first
+            try:
+                # Test if we can write to the exe directory
+                test_file = os.path.join(exe_dir, 'write_test.tmp')
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                return exe_dir
+            except (OSError, PermissionError):
+                # If we can't write to exe directory, use AppData
+                appdata_dir = os.path.join(os.path.expanduser('~'), 'AppData', 'Local', 'BrowserClickCounter')
+                os.makedirs(appdata_dir, exist_ok=True)
+                return appdata_dir
+        else:
+            # Running as script, use current working directory
+            return os.getcwd()
+    
+    def _get_settings_path(self, filename='click_counter_settings.json'):
+        """Get the full path for a settings file."""
+        return os.path.join(self._settings_dir, filename)
 
     # --- Persistence ---
-    def save_settings(self, path='click_counter_settings.json'):
+    def save_settings(self, path=None):
         """Save regions and app settings (not session data)."""
+        if path is None:
+            path = self._get_settings_path()
+        
+        print(f"DEBUG: Attempting to save {len(self.regions)} regions to: {path}")
+        
         settings = {
             'regions': self.regions,
             'last_region': self.last_region,
             'browser_detection': self.browser_detection,
             'timestamp': datetime.now().isoformat()
         }
-        with open(path, 'w') as f:
-            json.dump(settings, f, indent=2)
-
-    def load_settings(self, path='click_counter_settings.json'):
-        """Load regions and app settings."""
-        if os.path.exists(path):
-            with open(path, 'r') as f:
-                settings = json.load(f)
-            self.regions = settings.get('regions', [])
-            self.last_region = settings.get('last_region', None)
-            self.browser_detection = settings.get('browser_detection', True)
-            
-            # If we have a last_region but no regions, restore the last region
-            if self.last_region and not self.regions:
-                self.regions = [self.last_region]
-            
+        
+        try:
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w') as f:
+                json.dump(settings, f, indent=2)
+            print(f"DEBUG: Successfully saved settings to: {path}")
             return True
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+            return False
+
+    def load_settings(self, path=None):
+        """Load regions and app settings."""
+        if path is None:
+            path = self._get_settings_path()
+            
+        print(f"DEBUG: Attempting to load settings from: {path}")
+        
+        if os.path.exists(path):
+            try:
+                with open(path, 'r') as f:
+                    settings = json.load(f)
+                self.regions = settings.get('regions', [])
+                self.last_region = settings.get('last_region', None)
+                self.browser_detection = settings.get('browser_detection', True)
+                
+                print(f"DEBUG: Loaded {len(self.regions)} regions from settings")
+                
+                # If we have a last_region but no regions, restore the last region
+                if self.last_region and not self.regions:
+                    self.regions = [self.last_region]
+                    print(f"DEBUG: Restored last region, now have {len(self.regions)} regions")
+                
+                return True
+            except Exception as e:
+                print(f"Error loading settings: {e}")
+                return False
+        else:
+            print(f"DEBUG: Settings file does not exist at: {path}")
         return False
 
-    def save_session(self, session_duration_seconds, path='last_session.json'):
+    def save_session(self, session_duration_seconds, path=None):
         """Save current session data automatically."""
         if self.count == 0 and session_duration_seconds == 0:
             return  # Don't save empty sessions
+        
+        if path is None:
+            path = self._get_settings_path('last_session.json')
         
         # Calculate IPH
         hours = session_duration_seconds / 3600.0 if session_duration_seconds > 0 else 0
@@ -65,14 +127,25 @@ class ClickTracker:
             'regions_used': len(self.regions)
         }
         
-        with open(path, 'w') as f:
-            json.dump(session_data, f, indent=2)
+        try:
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w') as f:
+                json.dump(session_data, f, indent=2)
+        except Exception as e:
+            print(f"Error saving session: {e}")
 
-    def load_last_session(self, path='last_session.json'):
+    def load_last_session(self, path=None):
         """Load the last completed session data."""
+        if path is None:
+            path = self._get_settings_path('last_session.json')
+            
         if os.path.exists(path):
-            with open(path, 'r') as f:
-                return json.load(f)
+            try:
+                with open(path, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading last session: {e}")
         return None
 
     def _format_duration(self, seconds):
@@ -87,9 +160,21 @@ class ClickTracker:
         if region:
             self.regions.append(region)
             self.last_region = region  # Update last used region
+            print(f"DEBUG: Added region {region}, total regions: {len(self.regions)}")
 
     def clear_regions(self):
+        print(f"DEBUG: Clearing {len(self.regions)} regions")
         self.regions.clear()
+        self.last_region = None  # Also clear the last region
+    
+    def force_reload_settings(self):
+        """Force reload settings from disk. Useful for debugging."""
+        print("DEBUG: Force reloading settings...")
+        old_count = len(self.regions)
+        result = self.load_settings()
+        new_count = len(self.regions)
+        print(f"DEBUG: Force reload result: {result}, regions: {old_count} -> {new_count}")
+        return result
 
     def reset_session(self):
         """Reset current session data (for new session)."""
