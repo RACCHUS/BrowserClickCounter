@@ -14,7 +14,7 @@ class ClickTracker:
         self.regions = []
         self.click_times = []
         self.start_time = None
-        self.browser_detection = True
+        self.browser_detection = False  # Disabled by default - count all clicks in region
         self.listener = None
         self.is_listening = False
         self.is_paused = False
@@ -202,15 +202,46 @@ class ClickTracker:
             hwnd = win32gui.WindowFromPoint((x, y))
             if hwnd == 0:
                 return False
+            
+            # Try to get window title as fallback
+            try:
+                window_title = win32gui.GetWindowText(hwnd).lower()
+            except:
+                window_title = ""
+            
             _, process_id = win32process.GetWindowThreadProcessId(hwnd)
             try:
                 process = psutil.Process(process_id)
                 process_name = process.name().lower()
-                return any(browser in process_name for browser in ['chrome.exe', 'msedge.exe', 'edge.exe'])
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                
+                # Expanded browser list including common browsers
+                browsers = [
+                    'chrome.exe', 'msedge.exe', 'edge.exe',  # Chrome and Edge
+                    'firefox.exe',  # Firefox
+                    'brave.exe',  # Brave
+                    'opera.exe', 'operagx.exe',  # Opera
+                    'vivaldi.exe',  # Vivaldi
+                    'iexplore.exe',  # Internet Explorer
+                    'applicationframehost.exe',  # Windows 11 app container
+                ]
+                
+                # Check by process name
+                if any(browser in process_name for browser in browsers):
+                    return True
+                
+                # Fallback: Check window title for browser indicators
+                title_indicators = ['chrome', 'edge', 'firefox', 'brave', 'opera']
+                if any(indicator in window_title for indicator in title_indicators):
+                    return True
+                    
                 return False
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                # If we can't access process info, check window title
+                title_indicators = ['chrome', 'edge', 'firefox', 'brave', 'opera']
+                return any(indicator in window_title for indicator in title_indicators)
         except Exception:
-            return False
+            # If all else fails, assume it's valid (permissive fallback)
+            return True
 
     def _count_if_in_regions(self, x, y):
         for region in self.regions:

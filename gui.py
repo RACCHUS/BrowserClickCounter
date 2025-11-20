@@ -67,6 +67,8 @@ class ClickCounterGUI:
             'bg_accent': '#3b3f4f',
             'text_primary': '#cdd6f4',
             'text_error': '#f38ba8',
+            'warning_orange': '#fab387',
+            'warning_bg': '#2d2416',
         }
 
         self.main_frame = tk.Frame(self.root, bg=self.colors['bg_primary'], bd=1, relief='solid')
@@ -88,6 +90,13 @@ class ClickCounterGUI:
 
         # Compact view
         self.compact_frame = tk.Frame(self.main_frame, bg=self.colors['bg_primary'])
+        
+        # Warning banner for first 105 clicks (Feature 3)
+        self.compact_warning_banner = tk.Label(self.compact_frame, text='⚠ CAREFUL - First 105! ⚠', 
+                                              font=("Segoe UI", 9, "bold"), fg='#1e1e2e', 
+                                              bg=self.colors['warning_orange'], pady=2)
+        # Don't pack it yet - will be shown/hidden based on count
+        
         self.count_label = tk.Label(self.compact_frame, text=str(self.tracker.count), font=("Segoe UI", 16, "bold"), fg=self.colors['text_success'], bg=self.colors['bg_primary'])
         self.count_label.pack(pady=10)
         
@@ -125,11 +134,20 @@ class ClickCounterGUI:
 
         # Expanded view
         self.expanded_frame = tk.Frame(self.main_frame, bg=self.colors['bg_primary'])
+        
+        # Warning banner for first 105 clicks in expanded view (Feature 3)
+        self.expanded_warning_banner = tk.Label(self.expanded_frame, text='⚠ CAREFUL - First 105 Clicks! ⚠', 
+                                               font=("Segoe UI", 11, "bold"), fg='#1e1e2e', 
+                                               bg=self.colors['warning_orange'], pady=4)
+        # Don't pack it yet - will be shown/hidden based on count
+        
         self.expanded_count_label = tk.Label(self.expanded_frame, text=f"Clicks: {self.tracker.count}", fg=self.colors['text_success'], bg=self.colors['bg_primary'])
         self.expanded_count_label.pack(anchor='w', padx=8, pady=4)
 
-        # Personal message
-        self.love_label = tk.Label(self.expanded_frame, text='I love you Ash', fg=self.colors['text_secondary'], bg=self.colors['bg_primary'], font=("Segoe UI", 10, "italic"))
+        # Sweet message
+        self.love_label = tk.Label(self.expanded_frame, text='💖 I love you Ashley 💖', 
+                                   fg='#f5c2e7', bg=self.colors['bg_primary'], 
+                                   font=("Segoe UI", 10, "italic"))
         self.love_label.pack(anchor='center', pady=(0, 6))
 
         # Button container with improved layout
@@ -223,20 +241,26 @@ class ClickCounterGUI:
         self.expand_btn.pack(pady=(3, 5))  # Expand button with small spacing
         self.compact_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
         
-        # Set to narrower compact size 
-        self.root.geometry('130x160+30+30')  # Even narrower (130) to shrink left side
+        # Set to narrower compact size - preserve current position
+        # Adjust height based on whether we're in first 105 (banner visible)
+        if self.tracker.count < 105:
+            self.root.geometry('130x185')  # Taller to accommodate warning banner
+        else:
+            self.root.geometry('130x160')  # Normal compact size
         self.is_expanded = False
 
     def show_expanded(self):
         self.compact_frame.pack_forget()
         self.expanded_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        
+        # Resize to expanded size - preserve current position
         try:
             cur_w = self.root.winfo_width()
             cur_h = self.root.winfo_height()
             if cur_w < 360 or cur_h < 280:
-                self.root.geometry('360x480+30+30')
+                self.root.geometry('360x480')
         except Exception:
-            self.root.geometry('360x480+30+30')
+            self.root.geometry('360x480')
         self.is_expanded = True
 
     def toggle_view(self):
@@ -364,13 +388,71 @@ class ClickCounterGUI:
         """Called when a click is counted, handles celebrations and display updates."""
         self.update_count_display()
         
+        # Special celebration when reaching 105 clicks (Feature 5)
+        if self.tracker.count == 105:
+            messagebox.showinfo('Milestone Reached! 🎉', 
+                              '✅ Congratulations!\n\nYou\'ve completed the critical first 105 clicks!\n\nYou can now relax - the difficult part is over!')
+        
         # Trigger celebration if milestone reached
         if milestone and self.celebration_manager:
             self.celebration_manager.trigger_celebration(milestone, self.tracker.count)
 
     def update_count_display(self):
-        self.count_label.config(text=str(self.tracker.count))
-        self.expanded_count_label.config(text=f"Clicks: {self.tracker.count}")
+        count = self.tracker.count
+        in_first_105 = count < 105
+        
+        # Feature 1: Color-coded counter (orange during first 105)
+        # Feature 2: Show progress format X/105 while under 105
+        if in_first_105:
+            compact_text = f"{count}/105"
+            expanded_text = f"Clicks: {count}/105"
+            text_color = self.colors['warning_orange']
+        else:
+            compact_text = str(count)
+            expanded_text = f"Clicks: {count}"
+            text_color = self.colors['text_success']
+        
+        self.count_label.config(text=compact_text, fg=text_color)
+        self.expanded_count_label.config(text=expanded_text, fg=text_color)
+        
+        # Feature 3: Show/hide warning banners
+        if in_first_105:
+            # Show banners if not already shown
+            if not self.compact_warning_banner.winfo_ismapped():
+                self.compact_warning_banner.pack(side=tk.TOP, fill=tk.X, before=self.count_label)
+            if not self.expanded_warning_banner.winfo_ismapped():
+                self.expanded_warning_banner.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
+        else:
+            # Hide banners
+            if self.compact_warning_banner.winfo_ismapped():
+                self.compact_warning_banner.pack_forget()
+            if self.expanded_warning_banner.winfo_ismapped():
+                self.expanded_warning_banner.pack_forget()
+        
+        # Feature 4: Background color change
+        warning_bg = self.colors['warning_bg'] if in_first_105 else self.colors['bg_primary']
+        self.compact_frame.config(bg=warning_bg)
+        self.expanded_frame.config(bg=warning_bg)
+        self.count_label.config(bg=warning_bg)
+        self.expanded_count_label.config(bg=warning_bg)
+        self.compact_iph_label.config(bg=warning_bg)
+        
+        # Update all compact frame children backgrounds
+        for child in self.compact_frame.winfo_children():
+            try:
+                if isinstance(child, tk.Frame):
+                    child.config(bg=warning_bg)
+            except:
+                pass
+        
+        # Adjust compact window size when transitioning at 105 clicks
+        if not self.is_expanded:
+            if count == 105:
+                # Just passed 105, shrink window since banner is now hidden
+                self.root.geometry('130x160')
+            elif count == 104:
+                # About to reach 105, ensure window is tall enough
+                self.root.geometry('130x185')
 
     def update_status(self, running: bool):
         if running and not self.tracker.is_paused:
@@ -466,9 +548,10 @@ class ClickCounterGUI:
             hours = secs / 3600.0
             iph = self.tracker.count / hours if hours > 0 else 0.0
         
+        # Update count display with all first-105 features
+        self.update_count_display()
+        
         if self.is_expanded:
-            # update rate and session
-            self.expanded_count_label.config(text=f"Clicks: {self.tracker.count}")
             # update timer label with pause indication
             timer_text = f"Session: {self.timer.format_hms()}"
             if self.timer.is_paused():
@@ -477,8 +560,7 @@ class ClickCounterGUI:
             # show with one decimal place
             self.iph_label.config(text=f"IPH: {iph:.1f}")
         else:
-            # Update compact view
-            self.count_label.config(text=str(self.tracker.count))
+            # Update compact IPH
             self.compact_iph_label.config(text=f"IPH: {iph:.1f}")
         
         self.root.after(1000, self.update_stats_loop)

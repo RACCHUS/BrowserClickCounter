@@ -274,9 +274,14 @@ class TimerWidget:
             self.timer.start()
     
     def _reset_timer(self):
-        """Reset timer to initial state."""
+        """Reset timer to initial state and automatically start it."""
         self.timer.reset()
         self._update_display()
+        
+        # Automatically start the timer after reset
+        duration = int(self.duration_var.get())
+        self.timer.set_duration(duration)
+        self.timer.start()
     
     def _toggle_sound(self):
         """Toggle sound notifications on/off."""
