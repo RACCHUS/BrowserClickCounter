@@ -36,7 +36,7 @@ pip install -r requirements.txt
 ```
 
 ## 🚀 Usage
-1. **Launch**: `python main.py` or `python BrowserClickCounter.py`
+1. **Launch**: `python main.py`
 2. **Auto-Load**: App automatically loads your last used region (if any)
 3. **Quick Start**: If region is already set, just click "Start" to begin
 4. **Define New Regions**: Click "Draw" to create additional areas
@@ -118,19 +118,38 @@ pip install -r requirements.txt
 ## �📁 Project Structure
 ```
 BrowserClickCounter/
-├── main.py                 # Entry point (runs the GUI)
-├── click_logic.py         # Core non-UI click tracking logic
-├── gui.py                 # Tkinter GUI wrapper
-├── region_drawer.py       # Region drawing functionality
-├── region_manager.py      # Region management interface
-├── BrowserClickCounter.py # Backward compatibility wrapper (runs GUI)
-├── requirements.txt       # Python dependencies
-├── README.md              # This file
-├── dist/                  # PyInstaller output (EXE)
-├── Output/                # Inno Setup output (installer)
-├── BrowserClickCounter_Installer.zip # Zipped installer for sharing
-├── BrowserClickCounter.iss # Inno Setup script
-└── build_installer.cmd    # Helper batch to build installer
+├── main.py                    # Entry point
+├── requirements.txt           # Python dependencies
+├── README.md                  # This file
+│
+├── src/                       # Source code
+│   ├── gui.py                 # Main Tkinter GUI
+│   ├── click_logic.py         # Core click tracking logic
+│   │
+│   ├── timer/                 # Timer feature
+│   │   ├── timer.py           # Timer logic (session + countdown)
+│   │   └── timer_gui.py       # Timer UI widgets
+│   │
+│   ├── celebration/           # Celebration effects
+│   │   ├── celebration.py     # Celebration manager
+│   │   └── fireworks.py       # Particle effects
+│   │
+│   ├── region/                # Region management
+│   │   ├── region_drawer.py   # Draw click regions
+│   │   └── region_manager.py  # Manage regions dialog
+│   │
+│   └── audio/                 # Audio playback
+│       └── sound_manager.py   # Sound effects manager
+│
+├── tests/                     # Test files
+├── demos/                     # Demo scripts
+├── docs/                      # Documentation
+├── sounds/                    # Sound assets
+│
+├── dist/                      # PyInstaller output (EXE)
+├── Output/                    # Inno Setup output (installer)
+├── BrowserClickCounter.iss    # Inno Setup script
+└── build_installer.cmd        # Installer build script
 ```
 
 ## 🛠️ Building from Source

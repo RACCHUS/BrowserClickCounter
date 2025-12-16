@@ -6,6 +6,10 @@ Test script for the new lightweight celebration system.
 import tkinter as tk
 import time
 import sys
+import os
+
+# Add the parent directory to path so we can import our modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Mock GUI class for testing
 class MockGUI:
@@ -63,7 +67,7 @@ class MockGUI:
         self.test_major_btn.pack(side='left', padx=10)
         
         # Initialize celebration manager
-        from celebration import CelebrationManager
+        from src.celebration.celebration import CelebrationManager
         self.celebration_manager = CelebrationManager(self)
         
         # Status label

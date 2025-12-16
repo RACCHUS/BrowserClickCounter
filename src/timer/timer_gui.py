@@ -6,8 +6,8 @@ Provides compact and expanded timer interfaces.
 import tkinter as tk
 from tkinter import ttk
 from typing import Optional, Callable, Dict, Any
-from timer import CountdownTimer
-from sound_manager import SoundManager
+from src.timer.timer import CountdownTimer
+from src.audio.sound_manager import SoundManager
 
 
 class TimerWidget:
@@ -348,48 +348,61 @@ class TimerWidget:
     
     def _update_display(self):
         """Update timer display elements."""
-        time_display = self.timer.get_time_display()
-        
-        # Update compact display
-        if self.compact_time_label:
-            self.compact_time_label.config(text=time_display)
-        
-        # Update expanded display
-        if self.expanded_time_label:
-            self.expanded_time_label.config(text=time_display)
-        
-        # Update progress bar
-        if hasattr(self, 'progress_var'):
-            progress = self.timer.get_progress_percentage()
-            self.progress_var.set(progress)
+        try:
+            # Check if parent widget still exists
+            if not self.parent.winfo_exists():
+                return
+                
+            time_display = self.timer.get_time_display()
+            
+            # Update compact display
+            if self.compact_time_label and self.compact_time_label.winfo_exists():
+                self.compact_time_label.config(text=time_display)
+            
+            # Update expanded display
+            if self.expanded_time_label and self.expanded_time_label.winfo_exists():
+                self.expanded_time_label.config(text=time_display)
+            
+            # Update progress bar
+            if hasattr(self, 'progress_var'):
+                progress = self.timer.get_progress_percentage()
+                self.progress_var.set(progress)
+        except tk.TclError:
+            pass  # Widget was destroyed
     
     def _update_controls(self):
         """Update control button states."""
-        if self.timer.is_running():
-            button_text = "⏸"
-            button_color = self.colors.get('orange', '#fab387')
-        elif self.timer.is_paused():
-            button_text = "▶"
-            button_color = self.colors.get('green', '#a6e3a1')
-        else:
-            button_text = "▶"
-            button_color = self.colors.get('green', '#a6e3a1')
-        
-        # Update compact button
-        if self.compact_control_button:
-            self.compact_control_button.config(text=button_text, bg=button_color)
-        
-        # Update expanded button
-        if hasattr(self, 'play_pause_button'):
-            self.play_pause_button.config(text=button_text, bg=button_color)
+        try:
+            if self.timer.is_running():
+                button_text = "⏸"
+                button_color = self.colors.get('orange', '#fab387')
+            elif self.timer.is_paused():
+                button_text = "▶"
+                button_color = self.colors.get('green', '#a6e3a1')
+            else:
+                button_text = "▶"
+                button_color = self.colors.get('green', '#a6e3a1')
+            
+            # Update compact button
+            if self.compact_control_button and self.compact_control_button.winfo_exists():
+                self.compact_control_button.config(text=button_text, bg=button_color)
+            
+            # Update expanded button
+            if hasattr(self, 'play_pause_button') and self.play_pause_button.winfo_exists():
+                self.play_pause_button.config(text=button_text, bg=button_color)
+        except tk.TclError:
+            pass  # Widget was destroyed
     
     def _update_sound_button(self):
         """Update sound button appearance."""
-        if hasattr(self, 'sound_button'):
-            if self.sound_manager.is_enabled():
-                self.sound_button.config(text="🔊", bg=self.colors.get('blue', '#89b4fa'))
-            else:
-                self.sound_button.config(text="🔇", bg=self.colors.get('red', '#f38ba8'))
+        try:
+            if hasattr(self, 'sound_button') and self.sound_button.winfo_exists():
+                if self.sound_manager.is_enabled():
+                    self.sound_button.config(text="🔊", bg=self.colors.get('blue', '#89b4fa'))
+                else:
+                    self.sound_button.config(text="🔇", bg=self.colors.get('red', '#f38ba8'))
+        except tk.TclError:
+            pass  # Widget was destroyed
     
     def _start_auto_update(self):
         """Start automatic timer updates."""

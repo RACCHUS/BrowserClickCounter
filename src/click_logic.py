@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import ctypes
 from datetime import datetime, timedelta
 import psutil
 import win32gui
@@ -19,9 +20,38 @@ class ClickTracker:
         self.is_listening = False
         self.is_paused = False
         self.last_region = None  # Store the most recently used region
+        self.debug_mode = False  # Set to True for verbose logging
+        
+        # Log screen info for debugging
+        if self.debug_mode:
+            self._log_screen_info()
         
         # Get the proper directory for saving settings
         self._settings_dir = self._get_settings_directory()
+    
+    def _log_screen_info(self):
+        """Log screen resolution and DPI info for debugging."""
+        try:
+            # Get screen size
+            user32 = ctypes.windll.user32
+            screen_width = user32.GetSystemMetrics(0)
+            screen_height = user32.GetSystemMetrics(1)
+            
+            # Get DPI
+            try:
+                dpi = user32.GetDpiForSystem()
+            except Exception:
+                dpi = 96  # Default DPI
+            
+            scale_factor = dpi / 96.0 * 100
+            
+            print(f"=== SYSTEM INFO ===")
+            print(f"Screen: {screen_width}x{screen_height}")
+            print(f"DPI: {dpi} ({scale_factor:.0f}% scaling)")
+            print(f"Python: {sys.version}")
+            print(f"===================")
+        except Exception as e:
+            print(f"Could not get screen info: {e}")
 
     def _get_settings_directory(self):
         """Get the appropriate directory for saving settings files."""
@@ -127,13 +157,23 @@ class ClickTracker:
             'regions_used': len(self.regions)
         }
         
+        temp_path = path + '.tmp'
         try:
             # Ensure the directory exists
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, 'w') as f:
+            # Write to temp file first (atomic write pattern)
+            with open(temp_path, 'w') as f:
                 json.dump(session_data, f, indent=2)
+            # Atomic rename (safe on Windows with os.replace)
+            os.replace(temp_path, path)
         except Exception as e:
             print(f"Error saving session: {e}")
+            # Clean up temp file if it exists
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
 
     def load_last_session(self, path=None):
         """Load the last completed session data."""
@@ -267,32 +307,65 @@ class ClickTracker:
 
     def handle_click(self, x, y, button, pressed, on_counted=None):
         """Call from a mouse listener. If a click is counted, optionally call on_counted()."""
+        # Debug logging for all clicks
+        if self.debug_mode and pressed and button == mouse.Button.left:
+            in_any_region = False
+            for i, region in enumerate(self.regions):
+                in_region = (region['x1'] <= x <= region['x2'] and region['y1'] <= y <= region['y2'])
+                if in_region:
+                    in_any_region = True
+                print(f"DEBUG: Click({x},{y}) Region{i}:{region} -> {'IN' if in_region else 'OUT'}")
+            if not in_any_region and self.regions:
+                print(f"DEBUG: Click at ({x},{y}) NOT in any region")
+        
         if pressed and button == mouse.Button.left:
             # Don't count clicks if paused
             if self.is_paused:
+                if self.debug_mode:
+                    print(f"DEBUG: Click ignored - paused")
                 return
             if not self._is_browser_window(x, y):
+                if self.debug_mode:
+                    print(f"DEBUG: Click ignored - not browser window")
                 return
             counted, milestone = self._count_if_in_regions(x, y)
-            if counted and on_counted:
-                try:
-                    on_counted(milestone)
-                except Exception:
-                    pass
+            if counted:
+                if self.debug_mode:
+                    print(f"DEBUG: Click COUNTED! Total: {self.count}")
+                if on_counted:
+                    try:
+                        on_counted(milestone)
+                    except Exception:
+                        pass
 
     # --- Listener control ---
     def start_listening(self, on_counted=None):
         if self.is_listening:
-            return
+            return True
+        
+        if self.debug_mode:
+            print("=== STARTING LISTENER ===")
+            print(f"Regions: {self.regions}")
+            print(f"Browser detection: {self.browser_detection}")
+            print("=========================")
+        
         # Bind the internal handler which will call on_counted when appropriate
         def listener_cb(x, y, button, pressed):
             self.handle_click(x, y, button, pressed, on_counted=on_counted)
-        self.listener = mouse.Listener(on_click=listener_cb)
-        self.listener.start()
+        try:
+            self.listener = mouse.Listener(on_click=listener_cb)
+            self.listener.start()
+            if self.debug_mode:
+                print("Mouse listener started successfully")
+        except Exception as e:
+            print(f"Failed to start mouse listener: {e}")
+            self.listener = None
+            return False
         self.is_listening = True
         self.is_paused = False  # Ensure we're not paused when starting
         if self.start_time is None:
             self.start_time = datetime.now()
+        return True
 
     def pause_listening(self):
         """Pause click counting without stopping the listener or timer."""
@@ -305,11 +378,15 @@ class ClickTracker:
             self.is_paused = False
 
     def stop_listening(self):
-        if self.listener:
-            self.listener.stop()
+        try:
+            if self.listener:
+                self.listener.stop()
+        except Exception as e:
+            print(f"Error stopping mouse listener: {e}")
+        finally:
             self.listener = None
-        self.is_listening = False
-        self.is_paused = False
+            self.is_listening = False
+            self.is_paused = False
 
     # --- Stats helpers ---
     def clicks_last_hour(self):

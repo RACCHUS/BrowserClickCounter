@@ -44,37 +44,43 @@ class FloatingText:
         """Animate the floating text."""
         if not self.is_active:
             return
+        
+        try:
+            elapsed = time.time() - self.start_time
+            progress = elapsed / self.duration
             
-        elapsed = time.time() - self.start_time
-        progress = elapsed / self.duration
-        
-        if progress >= 1.0:
-            self.cleanup()
-            return
-        
-        # Float upward and fade out
-        offset_y = int(-30 * progress)  # Move up 30 pixels
-        alpha = 1.0 - progress  # Fade out
-        
-        new_y = self.start_y + offset_y
-        self.label.place(x=self.start_x, y=new_y)
-        
-        # Simple alpha effect by darkening the color
-        if alpha > 0.5:
-            self.label.configure(fg="#a6e3a1")
-        elif alpha > 0.2:
-            self.label.configure(fg="#7ba87d")
-        else:
-            self.label.configure(fg="#5a7a5e")
-        
-        # Continue animation
-        self.parent.after(16, self._animate)  # ~60fps
+            if progress >= 1.0:
+                self.cleanup()
+                return
+            
+            # Float upward and fade out
+            offset_y = int(-30 * progress)  # Move up 30 pixels
+            alpha = 1.0 - progress  # Fade out
+            
+            new_y = self.start_y + offset_y
+            self.label.place(x=self.start_x, y=new_y)
+            
+            # Simple alpha effect by darkening the color
+            if alpha > 0.5:
+                self.label.configure(fg="#a6e3a1")
+            elif alpha > 0.2:
+                self.label.configure(fg="#7ba87d")
+            else:
+                self.label.configure(fg="#5a7a5e")
+            
+            # Continue animation
+            self.parent.after(16, self._animate)  # ~60fps
+        except Exception:
+            self.cleanup()  # Graceful recovery on error
     
     def cleanup(self):
         """Clean up the floating text."""
         self.is_active = False
-        if self.label:
-            self.label.destroy()
+        try:
+            if self.label:
+                self.label.destroy()
+        except Exception:
+            pass  # Ignore cleanup errors
 
 
 class PulseEffect:
@@ -94,30 +100,38 @@ class PulseEffect:
         """Animate the pulse effect."""
         if not self.is_active:
             return
-            
-        elapsed = time.time() - self.start_time
-        progress = elapsed / self.duration
         
-        if progress >= 1.0:
-            self.label.configure(fg=self.original_color)
+        try:
+            elapsed = time.time() - self.start_time
+            progress = elapsed / self.duration
+            
+            if progress >= 1.0:
+                self.label.configure(fg=self.original_color)
+                self.is_active = False
+                return
+            
+            # Calculate current color
+            if len(self.colors) > 1:
+                # Cycle through colors
+                color_progress = progress * (len(self.colors) - 1)
+                color_index = int(color_progress)
+                
+                if color_index < len(self.colors) - 1:
+                    current_color = self.colors[color_index]
+                else:
+                    current_color = self.colors[-1]
+                
+                self.label.configure(fg=current_color)
+            
+            # Continue animation
+            self.label.after(16, self._animate)  # ~60fps
+        except Exception:
+            # Restore original color and stop animation on error
             self.is_active = False
-            return
-        
-        # Calculate current color
-        if len(self.colors) > 1:
-            # Cycle through colors
-            color_progress = progress * (len(self.colors) - 1)
-            color_index = int(color_progress)
-            
-            if color_index < len(self.colors) - 1:
-                current_color = self.colors[color_index]
-            else:
-                current_color = self.colors[-1]
-            
-            self.label.configure(fg=current_color)
-        
-        # Continue animation
-        self.label.after(16, self._animate)  # ~60fps
+            try:
+                self.label.configure(fg=self.original_color)
+            except Exception:
+                pass
 
 
 class SparkleParticle:
@@ -155,38 +169,44 @@ class SparkleParticle:
         """Animate the sparkle particle."""
         if not self.is_active:
             return
+        
+        try:
+            elapsed = time.time() - self.start_time
+            progress = elapsed / self.life
             
-        elapsed = time.time() - self.start_time
-        progress = elapsed / self.life
-        
-        if progress >= 1.0:
-            self.cleanup()
-            return
-        
-        # Move in a direction
-        distance = self.speed * elapsed
-        new_x = self.start_x + math.cos(self.angle) * distance
-        new_y = self.start_y + math.sin(self.angle) * distance
-        
-        self.label.place(x=int(new_x), y=int(new_y))
-        
-        # Fade out
-        alpha = 1.0 - progress
-        if alpha > 0.5:
-            self.label.configure(fg=self.color)
-        elif alpha > 0.2:
-            self.label.configure(fg="#b8a566")
-        else:
-            self.label.configure(fg="#8a7a4a")
-        
-        # Continue animation
-        self.parent.after(16, self._animate)
+            if progress >= 1.0:
+                self.cleanup()
+                return
+            
+            # Move in a direction
+            distance = self.speed * elapsed
+            new_x = self.start_x + math.cos(self.angle) * distance
+            new_y = self.start_y + math.sin(self.angle) * distance
+            
+            self.label.place(x=int(new_x), y=int(new_y))
+            
+            # Fade out
+            alpha = 1.0 - progress
+            if alpha > 0.5:
+                self.label.configure(fg=self.color)
+            elif alpha > 0.2:
+                self.label.configure(fg="#b8a566")
+            else:
+                self.label.configure(fg="#8a7a4a")
+            
+            # Continue animation
+            self.parent.after(16, self._animate)
+        except Exception:
+            self.cleanup()  # Graceful recovery on error
     
     def cleanup(self):
         """Clean up the sparkle particle."""
         self.is_active = False
-        if self.label:
-            self.label.destroy()
+        try:
+            if self.label:
+                self.label.destroy()
+        except Exception:
+            pass  # Ignore cleanup errors
 
 
 class CelebrationManager:

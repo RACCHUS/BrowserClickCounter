@@ -1,12 +1,31 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+
+# Collect all submodules from src package
+src_hiddenimports = collect_submodules('src')
 
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
-    datas=[],
-    hiddenimports=[],
+    datas=[
+        ('src', 'src'),  # Include entire src folder
+    ],
+    hiddenimports=src_hiddenimports + [
+        'pynput',
+        'pynput.mouse',
+        'pynput.keyboard',
+        'pynput._util',
+        'pynput._util.win32',
+        'pynput.mouse._win32',
+        'pynput.keyboard._win32',
+        'psutil',
+        'win32gui',
+        'win32process',
+        'win32api',
+        'win32con',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

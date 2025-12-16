@@ -214,13 +214,19 @@ class SoundManager:
     def _play_sound_sync(self, sound_name: str) -> bool:
         """Play sound synchronously using the current backend."""
         if sound_name not in self.sound_files:
+            print(f"Unknown sound name: {sound_name}")
             return False
         
         sound_file = self.sounds_dir / self.sound_files[sound_name]
         
         # Check if sound file exists, create default if not
         if not sound_file.exists():
+            print(f"Sound file not found, creating default: {sound_file}")
             self._create_default_sound(sound_name, sound_file)
+            # Verify creation was successful
+            if not sound_file.exists():
+                print(f"Failed to create default sound file: {sound_file}")
+                return self._play_system_beep()
         
         try:
             if self.current_backend == 'pygame':
@@ -231,7 +237,8 @@ class SoundManager:
                 return self._play_with_winsound(sound_file)
             elif self.current_backend == 'system_beep':
                 return self._play_system_beep()
-        except Exception:
+        except Exception as e:
+            print(f"Error playing sound with {self.current_backend}: {e}")
             # Fallback to system beep
             return self._play_system_beep()
         

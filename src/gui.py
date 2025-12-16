@@ -2,10 +2,10 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from datetime import datetime, timedelta
 from typing import Optional
-from click_logic import ClickTracker
-from timer import SessionTimer
-from celebration import CelebrationManager
-from timer_gui import TimerWidget
+from src.click_logic import ClickTracker
+from src.timer.timer import SessionTimer
+from src.celebration.celebration import CelebrationManager
+from src.timer.timer_gui import TimerWidget
     
 class ClickCounterGUI:
     """GUI wrapper that uses ClickTracker for core logic."""
@@ -26,7 +26,10 @@ class ClickCounterGUI:
         self.drag_start_x = 0
         self.drag_start_y = 0
 
-        self.setup_gui()
+        try:
+            self.setup_gui()
+        except tk.TclError as e:
+            raise RuntimeError(f"Failed to initialize GUI: {e}")
         
         # Initialize celebration manager after GUI is set up
         self.celebration_manager = CelebrationManager(self)
@@ -106,14 +109,14 @@ class ClickCounterGUI:
         self.compact_iph_label.pack(pady=(0, 5))
         
         # Compact control buttons
-        compact_controls = tk.Frame(self.compact_frame, bg=self.colors['bg_primary'])
-        compact_controls.pack(pady=5)
+        self.compact_controls = tk.Frame(self.compact_frame, bg=self.colors['bg_primary'])
+        self.compact_controls.pack(pady=5)
         
-        self.compact_start_btn = tk.Button(compact_controls, text='▶ Start', command=self.toggle_listening,
+        self.compact_start_btn = tk.Button(self.compact_controls, text='▶ Start', command=self.toggle_listening,
                                          bg=self.colors['text_success'], fg='white', width=8, font=("Segoe UI", 9))
         self.compact_start_btn.pack(side=tk.LEFT, padx=2)
         
-        self.compact_draw_btn = tk.Button(compact_controls, text='✏ Draw', command=self.draw_region,
+        self.compact_draw_btn = tk.Button(self.compact_controls, text='✏ Draw', command=self.draw_region,
                                         bg=self.colors['text_secondary'], fg='white', width=8, font=("Segoe UI", 9))
         self.compact_draw_btn.pack(side=tk.LEFT, padx=2)
         
@@ -143,12 +146,6 @@ class ClickCounterGUI:
         
         self.expanded_count_label = tk.Label(self.expanded_frame, text=f"Clicks: {self.tracker.count}", fg=self.colors['text_success'], bg=self.colors['bg_primary'])
         self.expanded_count_label.pack(anchor='w', padx=8, pady=4)
-
-        # Sweet message
-        self.love_label = tk.Label(self.expanded_frame, text='💖 I love you Ashley 💖', 
-                                   fg='#f5c2e7', bg=self.colors['bg_primary'], 
-                                   font=("Segoe UI", 10, "italic"))
-        self.love_label.pack(anchor='center', pady=(0, 6))
 
         # Button container with improved layout
         btn_container = tk.Frame(self.expanded_frame, bg=self.colors['bg_primary'])
@@ -230,8 +227,15 @@ class ClickCounterGUI:
             widget.pack_forget()
         
         # Pack the essential compact elements only
+        # Warning banner if needed
+        if self.tracker.count < 105:
+            self.compact_warning_banner.pack(fill=tk.X, pady=(0, 2))
+        
         self.count_label.pack(pady=(5, 2))  # Main count display - reduced padding
         self.compact_iph_label.pack(pady=(0, 3))  # Show IPH
+        
+        # Show compact control buttons (use existing frame)
+        self.compact_controls.pack(pady=3)
         
         # Show compact timer if it exists
         if hasattr(self, 'compact_timer_frame') and self.compact_timer_frame:
@@ -241,26 +245,35 @@ class ClickCounterGUI:
         self.expand_btn.pack(pady=(3, 5))  # Expand button with small spacing
         self.compact_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
         
-        # Set to narrower compact size - preserve current position
-        # Adjust height based on whether we're in first 105 (banner visible)
-        if self.tracker.count < 105:
-            self.root.geometry('130x185')  # Taller to accommodate warning banner
-        else:
-            self.root.geometry('130x160')  # Normal compact size
+        # Let tkinter auto-size the window based on content
+        self.root.update_idletasks()
+        req_width = self.compact_frame.winfo_reqwidth() + 16
+        req_height = self.compact_frame.winfo_reqheight() + self.title_bar.winfo_reqheight() + 16
+        # Ensure minimum size
+        width = max(150, req_width)
+        height = max(180, req_height)
+        self.root.geometry(f'{width}x{height}')
         self.is_expanded = False
 
     def show_expanded(self):
         self.compact_frame.pack_forget()
+        
+        # Show warning banner if needed
+        if self.tracker.count < 105:
+            self.expanded_warning_banner.pack(fill=tk.X, pady=(0, 4))
+        else:
+            self.expanded_warning_banner.pack_forget()
+        
         self.expanded_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         
-        # Resize to expanded size - preserve current position
-        try:
-            cur_w = self.root.winfo_width()
-            cur_h = self.root.winfo_height()
-            if cur_w < 360 or cur_h < 280:
-                self.root.geometry('360x480')
-        except Exception:
-            self.root.geometry('360x480')
+        # Let tkinter auto-size the window based on content
+        self.root.update_idletasks()
+        req_width = self.expanded_frame.winfo_reqwidth() + 24
+        req_height = self.expanded_frame.winfo_reqheight() + self.title_bar.winfo_reqheight() + 24
+        # Ensure minimum size for expanded view
+        width = max(340, req_width)
+        height = max(400, req_height)
+        self.root.geometry(f'{width}x{height}')
         self.is_expanded = True
 
     def toggle_view(self):
@@ -280,7 +293,7 @@ class ClickCounterGUI:
 
     # Action methods
     def draw_region(self):
-        from region_drawer import RegionDrawer
+        from src.region.region_drawer import RegionDrawer
         self.root.withdraw()
         RegionDrawer(self.on_region_drawn)
 
@@ -314,7 +327,7 @@ class ClickCounterGUI:
             print("DEBUG: GUI received None region (cancelled)")
 
     def manage_regions(self):
-        from region_manager import RegionManager
+        from src.region.region_manager import RegionManager
         if not self.tracker.regions:
             result = messagebox.askyesno('No Regions', 'No regions to manage. Would you like to draw one now?')
             if result:
