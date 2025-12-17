@@ -458,14 +458,15 @@ class ClickCounterGUI:
             except:
                 pass
         
-        # Adjust compact window size when transitioning at 105 clicks
-        if not self.is_expanded:
-            if count == 105:
-                # Just passed 105, shrink window since banner is now hidden
-                self.root.geometry('130x160')
-            elif count == 104:
-                # About to reach 105, ensure window is tall enough
-                self.root.geometry('130x185')
+        # Adjust window size when transitioning at 105 clicks (banner visibility changes)
+        if not self.is_expanded and count == 105:
+            # Just passed 105, recalculate window size since banner is now hidden
+            self.root.update_idletasks()
+            req_width = self.compact_frame.winfo_reqwidth() + 16
+            req_height = self.compact_frame.winfo_reqheight() + self.title_bar.winfo_reqheight() + 16
+            width = max(150, req_width)
+            height = max(160, req_height)
+            self.root.geometry(f'{width}x{height}')
 
     def update_status(self, running: bool):
         if running and not self.tracker.is_paused:
